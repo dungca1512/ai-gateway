@@ -1,0 +1,81 @@
+package com.aigateway.config;
+
+import com.aigateway.model.ChatModels;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Slf4j
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleNoResourceFoundException(
+            NoResourceFoundException ex, ServerWebExchange exchange) {
+        String path = exchange.getRequest().getPath().value();
+        
+        // Allow Swagger UI and static resources to pass through
+        if (path.startsWith("/webjars/") || 
+            path.startsWith("/swagger-ui") || 
+            path.startsWith("/v3/api-docs")) {
+            return Mono.error(ex); // Re-throw to let Spring handle it
+        }
+        
+        log.warn("Resource not found: {}", path);
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(createErrorResponse("not_found", "Resource not found: " + path, "resource_not_found")));
+    }
+
+    @ExceptionHandler(WebExchangeBindException.class)
+    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleValidationException(WebExchangeBindException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("Validation failed");
+
+        log.warn("Validation error: {}", message);
+
+        return Mono.just(ResponseEntity.badRequest()
+                .body(createErrorResponse("invalid_request_error", message, "validation_error")));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleIllegalStateException(IllegalStateException ex) {
+        log.error("Illegal state: {}", ex.getMessage());
+
+        return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(createErrorResponse("service_unavailable", ex.getMessage(), "provider_error")));
+    }
+
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleUnsupportedOperationException(UnsupportedOperationException ex) {
+        log.warn("Unsupported operation: {}", ex.getMessage());
+
+        return Mono.just(ResponseEntity.badRequest()
+                .body(createErrorResponse("invalid_request_error", ex.getMessage(), "unsupported_operation")));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleGenericException(Exception ex) {
+        log.error("Unexpected error", ex);
+
+        return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(createErrorResponse("server_error", "An unexpected error occurred", "internal_error")));
+    }
+
+    private ChatModels.ErrorResponse createErrorResponse(String type, String message, String code) {
+        return ChatModels.ErrorResponse.builder()
+                .error(ChatModels.ErrorResponse.Error.builder()
+                        .type(type)
+                        .message(message)
+                        .code(code)
+                        .build())
+                .build();
+    }
+}

@@ -1,0 +1,149 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-gateway
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# AI Provider Configuration
+ai:
+  providers:
+    openai:
+      enabled: ${OPENAI_ENABLED:true}
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      default-model: gpt-4o-mini
+      timeout-seconds: 30
+      priority: 1
+    
+    gemini:
+      enabled: ${GEMINI_ENABLED:true}
+      api-key: ${GEMINI_API_KEY:}
+      base-url: https://generativelanguage.googleapis.com/v1beta
+      default-model: gemini-1.5-flash
+      timeout-seconds: 30
+      priority: 2
+    
+    claude:
+      enabled: ${CLAUDE_ENABLED:true}
+      api-key: ${CLAUDE_API_KEY:}
+      base-url: https://api.anthropic.com/v1
+      default-model: claude-3-5-sonnet-20241022
+      timeout-seconds: 60
+      priority: 3
+    
+    local-worker:
+      enabled: ${LOCAL_WORKER_ENABLED:true}
+      base-url: ${PYTHON_WORKER_URL:http://localhost:8000}
+      default-model: local-llm
+      timeout-seconds: 120
+      priority: 10
+
+  # Routing configuration
+  routing:
+    default-provider: openai
+    fallback-enabled: true
+    max-retries: 2
+    retry-delay-ms: 1000
+
+  # Rate limiting
+  rate-limit:
+    enabled: true
+    requests-per-minute: 60
+    tokens-per-minute: 100000
+
+  # Caching
+  cache:
+    enabled: true
+    ttl-seconds: 3600
+    max-size: 10000
+
+# Resilience4j configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      openai:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      gemini:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      claude:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+      local-worker:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+
+  retry:
+    instances:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# Logging
+logging:
+  level:
+    com.aigateway: DEBUG
+    org.springframework.web.reactive: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# SpringDoc OpenAPI (Swagger UI)
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  show-actuator: true

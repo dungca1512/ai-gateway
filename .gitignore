@@ -1,0 +1,57 @@
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ===== Java/Maven =====
+gateway/target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ===== Python =====
+worker/__pycache__/
+worker/*.pyc
+worker/*.pyo
+worker/.pytest_cache/
+worker/venv/
+worker/.venv/
+*.egg-info/
+.eggs/
+
+# ===== Environment =====
+.env
+.env.local
+.env.*.local
+*.env
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== Dependencies =====
+node_modules/
+
+# ===== Build outputs =====
+build/
+dist/
+out/
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Test coverage =====
+coverage/
+.coverage
+htmlcov/
+
+# ===== Temp files =====
+*.tmp
+*.temp
+*.bak

@@ -1,0 +1,81 @@
+services:
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: ai-gateway-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-network
+
+  # Python AI Worker
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: ai-worker
+    ports:
+      - "8000:8000"
+    environment:
+      - WORKER_LLM_MODE=mock
+      - WORKER_DEBUG=false
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Java AI Gateway
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: ai-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHON_WORKER_URL=http://worker:8000
+      - LOCAL_WORKER_ENABLED=true
+      # Add your API keys here or use the.env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_ENABLED=${OPENAI_ENABLED:-false}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_ENABLED=${GEMINI_ENABLED:-false}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - CLAUDE_ENABLED=${CLAUDE_ENABLED:-false}
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ai-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+
+networks:
+  ai-network:
+    driver: bridge
+
+volumes:
+  redis_data:
