@@ -2,11 +2,15 @@
 Embedding generation router - OpenAI-compatible endpoint
 """
 
+import json
 import time
-from typing import List, Union, Optional
+import logging
+from typing import List, Union, Optional, Dict, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -17,9 +21,10 @@ class EmbeddingRequest(BaseModel):
     encoding_format: str = "float"
     dimensions: Optional[int] = None
     user: Optional[str] = None
+    provider: Optional[str] = None  # Added to match Gateway's EmbeddingRequest
     
     class Config:
-        extra = "ignore"  # Ignore extra fields like 'provider'
+        extra = "ignore"  # Ignore extra fields
 
 
 class EmbeddingData(BaseModel):

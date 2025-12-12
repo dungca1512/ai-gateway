@@ -18,7 +18,6 @@ public class EmbeddingModels {
     @AllArgsConstructor
     public static class EmbeddingRequest {
         @NotNull(message = "Input cannot be null")
-        @NotEmpty(message = "Input cannot be empty")
         private Object input; // String or List<String>
         
         @Builder.Default

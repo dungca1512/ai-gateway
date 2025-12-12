@@ -94,20 +94,19 @@ public class GeminiProvider implements AiProvider {
         String requestId = UUID.randomUUID().toString();
         String model = request.getModel() != null ? request.getModel() : settings.getDefaultModel();
 
-        log.debug("Gemini chat request: model={}, requestId={}, apiKeyLength={}, apiKeyStart={}",
-                model, requestId,
-                settings.getApiKey() != null ? settings.getApiKey().length() : 0,
-                settings.getApiKey() != null && settings.getApiKey().length() > 10
-                    ? settings.getApiKey().substring(0, 10) + "..." : "null");
+        log.debug("Gemini chat request: model={}, requestId={}", model, requestId);
 
         // Convert OpenAI format to Gemini format
         GeminiRequest geminiRequest = convertToGeminiRequest(request);
+        
+        // Build full URL directly to avoid WebClient uriBuilder issues
+        String url = settings.getBaseUrl() + "/models/" + model + ":generateContent?key=" + settings.getApiKey();
+        log.debug("Gemini chat URL: {}", url.replaceAll("key=.*", "key=***"));
 
-        return webClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/models/" + model + ":generateContent")
-                        .queryParam("key", settings.getApiKey())
-                        .build())
+        return WebClient.create()
+                .post()
+                .uri(url)
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .bodyValue(geminiRequest)
                 .retrieve()
                 .bodyToMono(GeminiResponse.class)
@@ -146,11 +145,12 @@ public class GeminiProvider implements AiProvider {
 
         String model = request.getModel() != null ? request.getModel() : settings.getDefaultModel();
         GeminiRequest geminiRequest = convertToGeminiRequest(request);
+        String apiKey = settings.getApiKey();
 
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
                         .path("/models/" + model + ":streamGenerateContent")
-                        .queryParam("key", settings.getApiKey())
+                        .queryParam("key", apiKey)
                         .build())
                 .bodyValue(geminiRequest)
                 .retrieve()
@@ -218,19 +218,27 @@ public class GeminiProvider implements AiProvider {
     @Override
     public Mono<Boolean> healthCheck() {
         if (!isAvailable()) {
+            log.debug("Gemini healthCheck: not available");
             return Mono.just(false);
         }
 
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/models")
-                        .queryParam("key", settings.getApiKey())
-                        .build())
-                .retrieve()
-                .toBodilessEntity()
-                .map(response -> response.getStatusCode().is2xxSuccessful())
+        String apiKey = settings.getApiKey();
+        String url = settings.getBaseUrl() + "/models?key=" + apiKey;
+        log.debug("Gemini healthCheck: calling URL with prefix apiKey={}", 
+                apiKey != null ? apiKey.substring(0, Math.min(10, apiKey.length())) + "..." : "null");
+        
+        // Use a fresh WebClient without any default headers
+        return WebClient.create()
+                .get()
+                .uri(url)
+                .exchangeToMono(response -> {
+                    boolean success = response.statusCode().is2xxSuccessful();
+                    log.debug("Gemini healthCheck: status={}, success={}", response.statusCode(), success);
+                    return response.releaseBody().thenReturn(success);
+                })
+                .doOnError(e -> log.warn("Gemini healthCheck failed: {}", e.getMessage()))
                 .onErrorReturn(false)
-                .timeout(Duration.ofSeconds(5));
+                .timeout(Duration.ofSeconds(10));
     }
 
     private GeminiRequest convertToGeminiRequest(ChatModels.ChatRequest request) {

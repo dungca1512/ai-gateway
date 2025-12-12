@@ -16,6 +16,7 @@ class Message(BaseModel):
     role: str
     content: str
     name: Optional[str] = None
+    function_call: Optional[Dict[str, Any]] = None
     
     class Config:
         extra = "ignore"
@@ -24,15 +25,19 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     model: str = "local-llm"
     messages: List[Message]
-    temperature: float = Field(default=0.7, ge=0, le=2)
+    temperature: Optional[float] = Field(default=0.7, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=1024, ge=1, le=4096)
-    top_p: float = Field(default=0.9, ge=0, le=1)
+    top_p: Optional[float] = Field(default=0.9, ge=0, le=1)
     stream: bool = False
     stop: Optional[List[str]] = None
     user: Optional[str] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    provider: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
     
     class Config:
-        extra = "ignore"  # Ignore extra fields like 'provider', 'metadata'
+        extra = "ignore"  # Ignore extra fields
 
 
 class ChatChoice(BaseModel):
@@ -61,6 +66,9 @@ async def chat_completion(request: ChatRequest):
     """
     Generate chat completion (OpenAI-compatible)
     """
+    import logging
+    logging.info(f"Chat request received: model={request.model}, messages={len(request.messages)}")
+    
     from models import llm_model
     
     if not llm_model.is_loaded():

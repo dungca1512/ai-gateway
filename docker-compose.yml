@@ -9,7 +9,7 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
       - WORKER_LLM_MODE=mock
       - WORKER_DEBUG=false
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -52,7 +52,7 @@ services:
       - REDIS_PORT=6379
       - PYTHON_WORKER_URL=http://worker:8000
       - LOCAL_WORKER_ENABLED=true
-      # Add your API keys here or use the.env file
+      # Add your API keys here or use .env file
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_ENABLED=${OPENAI_ENABLED:-false}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -60,7 +60,7 @@ services:
       - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       - CLAUDE_ENABLED=${CLAUDE_ENABLED:-false}
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/health" ]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3

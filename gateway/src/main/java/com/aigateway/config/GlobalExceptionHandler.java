@@ -7,30 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
-import org.springframework.web.reactive.resource.NoResourceFoundException;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(NoResourceFoundException.class)
-    public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleNoResourceFoundException(
-            NoResourceFoundException ex, ServerWebExchange exchange) {
-        String path = exchange.getRequest().getPath().value();
-        
-        // Allow Swagger UI and static resources to pass through
-        if (path.startsWith("/webjars/") || 
-            path.startsWith("/swagger-ui") || 
-            path.startsWith("/v3/api-docs")) {
-            return Mono.error(ex); // Re-throw to let Spring handle it
-        }
-        
-        log.warn("Resource not found: {}", path);
-        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(createErrorResponse("not_found", "Resource not found: " + path, "resource_not_found")));
-    }
 
     @ExceptionHandler(WebExchangeBindException.class)
     public Mono<ResponseEntity<ChatModels.ErrorResponse>> handleValidationException(WebExchangeBindException ex) {
