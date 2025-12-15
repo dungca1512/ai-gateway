@@ -33,7 +33,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       # 3. Build & Push Gateway Service (Java)
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           java-version: '21'
