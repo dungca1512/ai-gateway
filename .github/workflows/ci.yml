@@ -17,6 +17,8 @@ jobs:
         run: |
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then echo "❌ DOCKERHUB_USERNAME missing"; else echo "✅ USERNAME ok"; fi
           if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then echo "❌ DOCKERHUB_TOKEN missing"; else echo "✅ TOKEN ok"; fi
+          echo "Token length: ${#DOCKER_TOKEN}"
+          echo "Username length: ${#DOCKERHUB_USERNAME}"
 
 
       # 1. Đăng nhập vào Docker Hub
