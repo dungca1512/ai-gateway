@@ -18,6 +18,8 @@ from starlette.responses import Response
 
 from routers import chat, embedding, rag
 from models.config import Settings
+from rag.reranker import Reranker
+from rag.pipeline import RAGPipeline
 
 # Metrics
 REQUEST_COUNT = Counter('worker_requests_total', 'Total requests', ['endpoint', 'status'])
@@ -26,9 +28,14 @@ REQUEST_LATENCY = Histogram('worker_request_latency_seconds', 'Request latency',
 # Settings
 settings = Settings()
 
+# Global instances
+reranker_model = Reranker()
+rag_pipeline: Optional[RAGPipeline] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize and cleanup resources"""
+    global rag_pipeline
     print("🚀 Starting AI Worker...")
     
     # Initialize models on startup
@@ -39,7 +46,20 @@ async def lifespan(app: FastAPI):
     
     print("🤖 Initializing LLM...")
     llm_model.initialize()
-    
+
+    print("🧐 Initializing Reranker...")
+    reranker_model.initialize()
+
+    print("🛠️ Initializing RAG Pipeline...")
+    rag_pipeline = RAGPipeline(
+        embedding_model=embedding_model,
+        llm_model=llm_model,
+        reranker_model=reranker_model,
+        dimension=embedding_model.dimension
+    )
+    # Make pipeline available to the router
+    rag.router.pipeline = rag_pipeline
+
     print("✅ AI Worker ready!")
     
     yield
@@ -113,6 +133,10 @@ async def detailed_health():
             "llm": {
                 "loaded": llm_model.is_loaded(),
                 "mode": llm_model.mode
+            },
+            "reranker": {
+                "loaded": reranker_model.is_loaded(),
+                "model": reranker_model.model_name
             }
         },
         "timestamp": time.time()
