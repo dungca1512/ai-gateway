@@ -7,7 +7,7 @@ metadata:
   labels:
     app: web
 spec:
-  replicas: 2          # <-- đổi số này trong Git để demo sync/rollback
+  replicas: 4          # <-- đổi số này trong Git để demo sync/rollback
   selector:
     matchLabels:
       app: web
