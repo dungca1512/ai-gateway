@@ -1,0 +1,30 @@
+# App demo cho GitOps — chỉ dùng public image, không cần registry riêng.
+# Trạng thái mong muốn (desired state) sống trong Git; ArgoCD đồng bộ về cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  replicas: 2          # <-- đổi số này trong Git để demo sync/rollback
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
